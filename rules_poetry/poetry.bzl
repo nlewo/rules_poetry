@@ -3,6 +3,13 @@ load(":json_parser.bzl", "json_parse")
 def _clean_name(name):
     return name.lower().replace("-", "_").replace(".", "_")
 
+# Poetry doesn't add several packages in the poetry.lock file:
+# https://github.com/python-poetry/poetry/blob/d2fd581c9a856a5c4e60a25acb95d06d2a963cf2/poetry/puzzle/provider.py#L55
+# See also https://github.com/python-poetry/poetry/issues/1584 for explanations
+def _ignore_poetry_unsafe_pacakges(packages):
+    unsafe_packages = ["setuptools", "distribute", "pip", "wheel"]
+    return [ p for p in packages if p not in unsafe_packages]
+
 def _mapping(repository_ctx):
     result = repository_ctx.execute(
         [
@@ -156,7 +163,8 @@ load("//:defs.bzl", "pip_install")
             install_tags = ", ".join(install_tags),
             download_tags = ", ".join(download_tags),
             dependencies = [":install_%s" % _clean_name(package.name)] +
-                           [":library_%s" % _clean_name(dep) for dep in package.dependencies],
+                           [":library_%s" % _clean_name(dep)
+                            for dep in _ignore_poetry_unsafe_pacakges(package.dependencies)],
         )
 
     excludes_template = """
